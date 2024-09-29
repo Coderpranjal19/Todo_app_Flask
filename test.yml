@@ -1,0 +1,71 @@
+---
+
+- name: install docker on node
+  hosts: all
+  become: yes
+  vars:
+    container_count: 1
+    default_container_name: todoapp
+    default_container_image: pranjal1911/demo-todo-app:03
+    container_port: 5000
+    host_port: 80
+    host_volume_path: "/var/lib/docker/volumes/myvol/_data"        # Path on the host to mount
+    container_volume_path: "/app/data" # Path in the container to mount the volume
+
+  tasks:
+    - name: Install required system packages
+      apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
+
+    - name: Add docker GPG apt key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu jammy stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true    
+
+    - name: Install python3-pip
+      ansible.builtin.apt:
+        name: python3-pip
+        state: present
+    
+    - name: Install python3-docker
+      ansible.builtin.apt:
+        name: python3-docker
+        state: present
+
+    - name: Pull default Docker image
+      community.docker.docker_image:
+        name: "{{ default_container_image }}"
+        source: pull
+
+    - name: Create and start Docker container
+      community.docker.docker_container:
+        name: "{{ default_container_name }}"
+        image: "{{ default_container_image }}"
+        state: started  # Ensures the container is running
+        ports: 
+          - "{{ host_port }}:{{ container_port }}"  # Bind host port to container port
+        detach: true  # Run the container in detached mode 
+        volumes: 
+          - "{{ host_volume_path }}:{{ container_volume_path }}"  
+      
+   

@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, send_file
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import pandas as pd
+from io import BytesIO
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
@@ -63,5 +65,29 @@ def delete(sno):
     db.session.commit()
     return redirect('/')
 
+
+@app.route('/export_csv')
+def export_csv():
+    todos = Todo.query.all()
+
+    todo_data = []
+    for todo in todos:
+        todo_data.append({
+            'S.No': todo.sno,
+            'Title': todo.title,
+            'Description': todo.desc,
+            'Date Created': todo.date_created.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    df = pd.DataFrame(todo_data)
+        # Save the DataFrame to an in-memory buffer
+    output = BytesIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+    
+    # Send the CSV file to the user
+    return send_file(output, download_name="todos.csv", as_attachment=True, mimetype='text/csv')
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+    
